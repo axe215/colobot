@@ -14,7 +14,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/lib/wingetopt)
 
 list(APPEND WINDOWS_ADDITIONAL_LIBRARIES
     wingetopt
-    Dbghelp
+    dbghelp
 )
 
 # Additional libraries for static runtime

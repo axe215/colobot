@@ -28,8 +28,8 @@
 #include <iostream>
 #include <sstream>
 
-#include <Windows.h>
-#include <DbgHelp.h>
+#include <windows.h>
+#include <dbghelp.h>
 #include <process.h>
 
 LONG WINAPI StackTraceExceptionFilter(LPEXCEPTION_POINTERS exception);
