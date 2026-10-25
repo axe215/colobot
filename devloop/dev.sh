@@ -15,9 +15,17 @@ DIST_WIN=$WORK/dist/win64
 DIST_LINUX=$WORK/dist/linux
 JOBS=${JOBS:-6}
 
+# Полностью статический exe: зависимости статических SDL2/SDL2_ttf, которые CMake проекта
+# добавляет только для MSVC (COLOBOT_MSVC_STATIC_RUNTIME), + стандартный набор CMake для MinGW.
+WIN_STATIC_LIBS="-L$WORK/build-win64/vcpkg_installed/x64-mingw-static-release/lib
+    -lfreetype -lbz2 -lbrotlidec-static -lbrotlicommon-static -lpng16 -lzlib
+    -lwinmm -limm32 -lversion -lsetupapi -lcfgmgr32 -ldxguid -lws2_32
+    -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32"
+WIN_STATIC_LIBS=$(echo $WIN_STATIC_LIBS)
+
 COMMON_OPTS=(-G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
     -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-    -DPORTABLE=ON -DPORTABLE_SAVES=ON -DCBOT_STATIC=ON -DDESKTOP=OFF)
+    -DPORTABLE=ON -DPORTABLE_SAVES=ON -DCBOT_STATIC=ON)
 
 cmd_setup() {
     mkdir -p "$WORK/logs" "$WORK/sync" "$WORK/shots"
@@ -34,7 +42,7 @@ set(VCPKG_TARGET_ARCHITECTURE x64)
 include(${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/toolchains/mingw.cmake)
 EOF
     cmake -S "$SRC" -B "$WORK/build-linux" "${COMMON_OPTS[@]}" \
-        -DCOLOBOT_APPIMAGE_BASEPATH_OVERRIDE=ON -DTESTS=ON -DTOOLS=ON \
+        -DCOLOBOT_APPIMAGE_BASEPATH_OVERRIDE=ON -DTESTS=ON -DTOOLS=ON -DDESKTOP=OFF \
         -DCMAKE_INSTALL_PREFIX="$DIST_LINUX"
     cmake -S "$SRC" -B "$WORK/build-win64" "${COMMON_OPTS[@]}" \
         -DCMAKE_TOOLCHAIN_FILE="$WORK/vcpkg/scripts/buildsystems/vcpkg.cmake" \
@@ -42,7 +50,9 @@ EOF
         -DVCPKG_TARGET_TRIPLET=x64-mingw-static-release -DVCPKG_HOST_TRIPLET=x64-linux \
         "-DVCPKG_INSTALL_OPTIONS=--clean-after-build" \
         -DGLEW_STATIC=ON -DSNDFILE_STATIC=ON -DTESTS=OFF -DTOOLS=OFF \
+        -DDESKTOP=ON `# под Windows это только colobot.rc с иконкой, без него configure падает` \
         -DCMAKE_EXE_LINKER_FLAGS=-static \
+        "-DCMAKE_CXX_STANDARD_LIBRARIES=$WIN_STATIC_LIBS" \
         -DCMAKE_INSTALL_PREFIX="$DIST_WIN"
 }
 
