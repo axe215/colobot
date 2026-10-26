@@ -5,7 +5,7 @@
 #   dev.sh build [win|linux|all]     собрать, установить в dist/, обновить manifest (по умолчанию all)
 #   dev.sh publish                   только пересчитать manifest Windows-сборки
 #   dev.sh scene [missions101|free101|menu|-ключи...]   что запустит play.ps1 (без аргумента: показать)
-#   dev.sh shot <сцена|menu> [сек] [файл.png]           скриншот Linux-сборки под xvfb
+#   dev.sh shot <сцена|menu> [сек] [файл.png]           скриншот Linux-сборки под xvfb (RES=3440x1440)
 #   dev.sh logs [N]                  N-й с конца лог, присланный play.ps1 (по умолчанию последний)
 set -euo pipefail
 
@@ -13,7 +13,10 @@ SRC=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${COLOBOT_WORK:-$HOME/colobot-work}
 DIST_WIN=$WORK/dist/win64
 DIST_LINUX=$WORK/dist/linux
-JOBS=${JOBS:-6}
+# Сервер общий (на нём живут чужие сервисы): половина ядер, низкий приоритет CPU и диска.
+JOBS=${JOBS:-4}
+MIN_FREE_GB=${MIN_FREE_GB:-3}
+QUIET=(nice -n 15 ionice -c 3)
 
 # Полностью статический exe: зависимости статических SDL2/SDL2_ttf, которые CMake проекта
 # добавляет только для MSVC (COLOBOT_MSVC_STATIC_RUNTIME), + стандартный набор CMake для MinGW.
@@ -56,18 +59,28 @@ EOF
         -DCMAKE_INSTALL_PREFIX="$DIST_WIN"
 }
 
+check_disk() {
+    local free_gb
+    free_gb=$(df -BG --output=avail "$WORK" | tail -1 | tr -dc '0-9')
+    if [ "$free_gb" -lt "$MIN_FREE_GB" ]; then
+        echo "На диске свободно ${free_gb} ГБ (< ${MIN_FREE_GB} ГБ) — сборку не запускаю." >&2
+        exit 1
+    fi
+}
+
 build_linux() {
-    nice -n 10 cmake --build "$WORK/build-linux" -j"$JOBS"
+    "${QUIET[@]}" cmake --build "$WORK/build-linux" -j"$JOBS"
     cmake --install "$WORK/build-linux" > /dev/null
 }
 
 build_win() {
-    nice -n 10 cmake --build "$WORK/build-win64" -j"$JOBS"
+    "${QUIET[@]}" cmake --build "$WORK/build-win64" -j"$JOBS"
     cmake --install "$WORK/build-win64" --strip > /dev/null
     cmd_publish
 }
 
 cmd_build() {
+    check_disk
     case "${1:-all}" in
         win)   build_win ;;
         linux) build_linux ;;
@@ -110,14 +123,15 @@ cmd_shot() {
     local scene=${1:?"сцена, например missions101 (или menu)"}
     local sec=${2:-30}
     local out=${3:-$WORK/shots/$scene-$(date +%Y%m%d-%H%M%S).png}
-    local args=()
-    [ "$scene" = menu ] || args=(-runscene "$scene")
+    local res=${RES:-1280x720}
+    local args=(-resolution "$res")
+    [ "$scene" = menu ] || args+=(-runscene "$scene")
     mkdir -p "$(dirname "$out")"
-    LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy ALSOFT_DRIVERS=null \
-        xvfb-run -a -s "-screen 0 1280x720x24" bash -c '
+    LP_NUM_THREADS=2 LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy ALSOFT_DRIVERS=null nice -n 15 \
+        xvfb-run -a -s "-screen 0 ${res}x24" bash -c '
             dir=$1 out=$2 sec=$3; shift 3
             cd "$dir"
-            ./colobot -resolution 1280x720 "$@" > "$out.log" 2>&1 & pid=$!
+            ./colobot "$@" > "$out.log" 2>&1 & pid=$!
             sleep "$sec"
             xwd -root -silent | convert xwd:- "$out"
             kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null || true
