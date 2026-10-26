@@ -36,6 +36,11 @@
  */
 const float MAXVOLUME = 100.0f;
 
+/*!
+ * Audio and music volume used when no volume is saved in the settings yet
+ */
+const float DEFAULT_VOLUME = 10.0f;
+
 
 /**
  * \enum    SoundNext

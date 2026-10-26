@@ -27,8 +27,8 @@
 
 CALSound::CALSound()
     : m_enabled(false),
-      m_audioVolume(1.0f),
-      m_musicVolume(1.0f),
+      m_audioVolume(DEFAULT_VOLUME / MAXVOLUME),
+      m_musicVolume(DEFAULT_VOLUME / MAXVOLUME),
       m_channelsLimit(2048),
       m_device{},
       m_context{}
