@@ -68,13 +68,8 @@ struct MultisizeFont
 /**
  * \struct FontTexture
  * \brief Single texture filled with character textures
+ * Note: Definition moved to text.h for testing accessibility
  */
-struct FontTexture
-{
-    unsigned int id = 0;
-    glm::ivec2 tileSize;
-    int freeSlots = 0;
-};
 
 struct CodePointComparator
 {
@@ -151,8 +146,9 @@ std::string ToString(FontType type)
 
 namespace
 {
-constexpr glm::ivec2 REFERENCE_SIZE(800, 600);
-constexpr glm::ivec2 FONT_TEXTURE_SIZE(256, 256);
+constexpr int FONT_TEXTURE_BASE_SIZE = 256;
+constexpr int FONT_TEXTURE_MAX_SIZE = 2048;
+constexpr int FONT_TEXTURE_SLOTS_PER_ROW = 16;
 
 Gfx::FontType ToBoldFontType(Gfx::FontType type)
 {
@@ -408,10 +404,17 @@ CText::CText(CEngine* engine)
     m_fontsCache = std::make_unique<FontsCache>();
 
     m_quadBatch = std::make_unique<CQuadBatch>(*engine);
+    GetLogger()->Debug("CText: atlas system ready (base=%%x%%, max=%%x%%)",
+                       FONT_TEXTURE_BASE_SIZE, FONT_TEXTURE_MAX_SIZE);
 }
 
 CText::~CText()
 {
+    if (m_device != nullptr && !m_fontTextureMap.empty())
+    {
+        FlushCache();
+    }
+
     m_device = nullptr;
     m_engine = nullptr;
 }
@@ -470,15 +473,24 @@ std::string CText::GetError()
 
 void CText::FlushCache()
 {
-    for (auto& fontTexture : m_fontTextures)
+    if (m_device != nullptr)
     {
-        Texture tex;
-        tex.id = fontTexture.id;
-        m_device->DestroyTexture(tex);
+        for (auto& [key, textures] : m_fontTextureMap)
+        {
+            for (auto& fontTexture : textures)
+            {
+                Texture tex;
+                tex.id = fontTexture.id;
+                m_device->DestroyTexture(tex);
+            }
+        }
     }
-    m_fontTextures.clear();
+    m_fontTextureMap.clear();
 
-    m_fontsCache->Flush();
+    if (m_fontsCache != nullptr)
+    {
+        m_fontsCache->Flush();
+    }
 }
 
 int CText::GetTabSize()
@@ -1037,7 +1049,7 @@ void CText::StringToUTFCharList(std::string_view text, std::vector<StrUtils::Cod
         int len = StrUtils::UTF8CharLength(text);
 
         if (len == 0) break;
-        
+
         StrUtils::CodePoint ch = std::string_view(text.data(), len);
 
         chars.push_back(ch);
@@ -1215,14 +1227,19 @@ void CText::DrawCharAndAdjustPos(StrUtils::CodePoint ch, FontType font, float si
 
         CharTexture tex = GetCharTexture(ch, font, size);
 
+        if (tex.id == 0)
+        {
+            return;
+        }
+
         glm::vec2 p1(pos.x, pos.y - tex.charSize.y);
         glm::vec2 p2(pos.x + tex.charSize.x, pos.y);
 
         const float halfPixelMargin = 0.5f;
-        glm::vec2 texCoord1(static_cast<float>(tex.charPos.x + halfPixelMargin) / FONT_TEXTURE_SIZE.x,
-                            static_cast<float>(tex.charPos.y + halfPixelMargin) / FONT_TEXTURE_SIZE.y);
-        glm::vec2 texCoord2(static_cast<float>(tex.charPos.x + tex.charSize.x - halfPixelMargin) / FONT_TEXTURE_SIZE.x,
-                            static_cast<float>(tex.charPos.y + tex.charSize.y - halfPixelMargin) / FONT_TEXTURE_SIZE.y);
+        glm::vec2 texCoord1(static_cast<float>(tex.charPos.x + halfPixelMargin) / tex.atlasSize.x,
+                            static_cast<float>(tex.charPos.y + halfPixelMargin) / tex.atlasSize.y);
+        glm::vec2 texCoord2(static_cast<float>(tex.charPos.x + tex.charSize.x - halfPixelMargin) / tex.atlasSize.x,
+                            static_cast<float>(tex.charPos.y + tex.charSize.y - halfPixelMargin) / tex.atlasSize.y);
 
         Gfx::IntColor col = Gfx::ColorToIntColor(color);
 
@@ -1241,8 +1258,16 @@ void CText::DrawCharAndAdjustPos(StrUtils::CodePoint ch, FontType font, float si
 
 int CText::GetFontPointSize(float size) const
 {
+    // length(800, 600) — constant, avoid recomputing each call
+    static constexpr float REFERENCE_LENGTH = 1000.0f;
+
     glm::ivec2 windowSize = m_engine->GetWindowSize();
-    return static_cast<int>(size * (glm::length(glm::vec2(windowSize)) / glm::length(glm::vec2(REFERENCE_SIZE))));
+    float windowLength = glm::length(glm::vec2(windowSize));
+
+    if (windowLength < 1.0f)
+        return static_cast<int>(size);
+
+    return static_cast<int>(size * (windowLength / REFERENCE_LENGTH));
 }
 
 CachedFont* CText::GetOrOpenFont(FontType type, float size)
@@ -1255,6 +1280,7 @@ CachedFont* CText::GetOrOpenFont(FontType type, float size)
     }
     return cachedFont;
 }
+
 
 CharTexture CText::GetCharTexture(StrUtils::CodePoint ch, FontType font, float size)
 {
@@ -1273,17 +1299,13 @@ CharTexture CText::GetCharTexture(StrUtils::CodePoint ch, FontType font, float s
     {
         tex = CreateCharTexture(ch, cf);
 
-        if (tex.id == 0) // invalid
+        if (tex.id == 0) // Creation failed (e.g., atlas full and resize failed)
+        {
             return CharTexture();
-
+        }
         cf->cache[ch] = tex;
     }
     return tex;
-}
-
-glm::ivec2 CText::GetFontTextureSize()
-{
-    return FONT_TEXTURE_SIZE;
 }
 
 CharTexture CText::CreateCharTexture(StrUtils::CodePoint ch, CachedFont* font)
@@ -1302,45 +1324,55 @@ CharTexture CText::CreateCharTexture(StrUtils::CodePoint ch, CachedFont* font)
     }
 
     const int pixelMargin = 1;
-    glm::ivec2 tileSize(Math::Max(16, Math::NextPowerOfTwo(textSurface->w)) + pixelMargin,
-                        Math::Max(16, Math::NextPowerOfTwo(textSurface->h)) + pixelMargin);
+    // Margin applied before the power-of-two step so glyph variations that differ by ≤1px share the same tile bucket.
+    glm::ivec2 tileSize(Math::Max(16, Math::NextPowerOfTwo(textSurface->w + pixelMargin)),
+                        Math::Max(16, Math::NextPowerOfTwo(textSurface->h + pixelMargin)));
 
     FontTexture* fontTexture = GetOrCreateFontTexture(tileSize);
 
     if (fontTexture == nullptr)
     {
         m_error = "Texture create error";
+        SDL_FreeSurface(textSurface);
+        return texture;
     }
-    else
-    {
-        texture.id = fontTexture->id;
-        texture.charPos = GetNextTilePos(*fontTexture);
-        texture.charSize = { textSurface->w, textSurface->h };
 
-        ImageData imageData;
-        imageData.surface = textSurface;
+    texture.id = fontTexture->id;
+    texture.charPos = GetNextTilePos(*fontTexture);
+    texture.charSize = { textSurface->w, textSurface->h };
+    texture.atlasSize = fontTexture->textureSize;
 
-        Texture tex;
-        tex.id = texture.id;
-        m_device->UpdateTexture(tex, texture.charPos, &imageData, TextureFormat::RGBA);
+    ImageData imageData;
+    imageData.surface = textSurface;
 
-        imageData.surface = nullptr;
+    Texture tex;
+    tex.id = texture.id;
+    m_device->UpdateTexture(tex, texture.charPos, &imageData, TextureFormat::RGBA);
 
-        --fontTexture->freeSlots;
-    }
+    imageData.surface = nullptr;
+
+    --fontTexture->freeSlots;
 
     SDL_FreeSurface(textSurface);
-
     return texture;
 }
 
 FontTexture* CText::GetOrCreateFontTexture(const glm::ivec2& tileSize)
 {
-    for (auto& fontTexture : m_fontTextures)
+    uint64_t key = PackTileSize(tileSize);
+    auto it = m_fontTextureMap.find(key);
+
+    if (it != m_fontTextureMap.end())
     {
-       if (fontTexture.tileSize == tileSize && fontTexture.freeSlots > 0)
-           return &fontTexture;
+        for (auto& fontTexture : it->second)
+        {
+            if (fontTexture.freeSlots > 0)
+                return &fontTexture;
+        }
     }
+
+    GetLogger()->Debug("Creating NEW atlas for tile size %%x%% - no existing atlas with free slots found",
+                      tileSize.x, tileSize.y);
 
     FontTexture newFontTexture = CreateFontTexture(tileSize);
     if (newFontTexture.id == 0)
@@ -1348,13 +1380,31 @@ FontTexture* CText::GetOrCreateFontTexture(const glm::ivec2& tileSize)
         return nullptr;
     }
 
-    m_fontTextures.push_back(newFontTexture);
-    return &m_fontTextures.back();
+    GetLogger()->Debug("New atlas created: ID=%%, size=%%x%%, slots=%%, tileSize=%%x%%",
+                      newFontTexture.id,
+                      newFontTexture.textureSize.x, newFontTexture.textureSize.y,
+                      newFontTexture.freeSlots,
+                      newFontTexture.tileSize.x, newFontTexture.tileSize.y);
+
+    auto& vec = m_fontTextureMap[key];
+    vec.push_back(newFontTexture);
+    return &vec.back();
 }
 
 FontTexture CText::CreateFontTexture(const glm::ivec2& tileSize)
 {
-    SDL_Surface* textureSurface = SDL_CreateRGBSurface(0, FONT_TEXTURE_SIZE.x, FONT_TEXTURE_SIZE.y, 32,
+    assert(tileSize.x > 0 && tileSize.y > 0);
+
+    // Calculate initial atlas size based on tile size
+    // Atlas fits at least FONT_TEXTURE_SLOTS_PER_ROW^2 tiles; use the larger tile dimension so tall glyphs get enough rows too
+    int minSize = std::max(tileSize.x, tileSize.y) * FONT_TEXTURE_SLOTS_PER_ROW;
+    int initialSize = Math::NextPowerOfTwo(minSize);
+    initialSize = std::max(initialSize, FONT_TEXTURE_BASE_SIZE);
+    initialSize = std::min(initialSize, FONT_TEXTURE_MAX_SIZE);
+
+    glm::ivec2 atlasSize(initialSize, initialSize);
+
+    SDL_Surface* textureSurface = SDL_CreateRGBSurface(0, atlasSize.x, atlasSize.y, 32,
                                                        0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
     ImageData data;
     data.surface = textureSurface;
@@ -1372,22 +1422,23 @@ FontTexture CText::CreateFontTexture(const glm::ivec2& tileSize)
     FontTexture fontTexture;
     fontTexture.id = tex.id;
     fontTexture.tileSize = tileSize;
-    int horizontalTiles = FONT_TEXTURE_SIZE.x / tileSize.x;
-    int verticalTiles = FONT_TEXTURE_SIZE.y / tileSize.y;
+    fontTexture.textureSize = atlasSize;
+    int horizontalTiles = atlasSize.x / tileSize.x;
+    int verticalTiles = atlasSize.y / tileSize.y;
     fontTexture.freeSlots = horizontalTiles * verticalTiles;
     return fontTexture;
 }
 
 glm::ivec2 CText::GetNextTilePos(const FontTexture& fontTexture)
 {
-    int horizontalTiles = FONT_TEXTURE_SIZE.x / std::max(1, fontTexture.tileSize.x); //this should prevent crashes in some combinations of resolution and font size, see issue #1128
-    int verticalTiles = FONT_TEXTURE_SIZE.y / std::max(1, fontTexture.tileSize.y);
+    int horizontalTiles = fontTexture.textureSize.x / std::max(1, fontTexture.tileSize.x);
+    int verticalTiles = fontTexture.textureSize.y / std::max(1, fontTexture.tileSize.y);
 
     int totalTiles = horizontalTiles * verticalTiles;
     int tileNumber = totalTiles - fontTexture.freeSlots;
 
     int verticalTileIndex = tileNumber / std::max(1, horizontalTiles);
-    int horizontalTileIndex = tileNumber % horizontalTiles;
+    int horizontalTileIndex = tileNumber % std::max(1, horizontalTiles);
 
     return { horizontalTileIndex * fontTexture.tileSize.x,
              verticalTileIndex * fontTexture.tileSize.y };

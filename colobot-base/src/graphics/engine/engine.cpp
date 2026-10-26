@@ -157,6 +157,9 @@ struct EngineMouse
 };
 
 constexpr glm::ivec2 MOUSE_SIZE(32, 32);
+constexpr int MOUSE_SHADOW_OFFSET_X = 4;
+constexpr int MOUSE_SHADOW_OFFSET_Y = 3;
+
 const std::map<EngineMouseType, EngineMouse> MOUSE_TYPES = {
     {{ENG_MOUSE_NORM},    {EngineMouse( 0,  1, 32, TransparencyMode::WHITE, TransparencyMode::BLACK, glm::ivec2( 1,  1))}},
     {{ENG_MOUSE_WAIT},    {EngineMouse( 2,  3, 33, TransparencyMode::WHITE, TransparencyMode::BLACK, glm::ivec2( 8, 12))}},
@@ -2833,7 +2836,7 @@ void CEngine::Draw3DScene()
     terrainRenderer->SetShadowMap(m_shadowMap);
     terrainRenderer->SetLight(glm::vec4(1.0, 1.0, -1.0, 0.0), 1.0f, glm::vec3(1.0));
     terrainRenderer->SetSky(Color(1.0, 1.0, 1.0), 0.2f);
-    
+
     if (m_shadowMapping)
         terrainRenderer->SetShadowParams(m_shadowRegions, shadowParams);
     else
@@ -4587,19 +4590,60 @@ void CEngine::DrawMouse()
 
     glm::vec2 mousePos = CInput::GetInstancePointer()->GetMousePos();
     glm::ivec2 pos(mousePos.x * m_size.x, m_size.y - mousePos.y * m_size.y);
-    pos.x -= MOUSE_TYPES.at(m_mouseType).hotPoint.x;
-    pos.y -= MOUSE_TYPES.at(m_mouseType).hotPoint.y;
 
-    glm::ivec2 shadowPos = { pos.x + 4, pos.y - 3 };
+    const EngineMouse& mouse = MOUSE_TYPES.at(m_mouseType);
+    MouseScaleData scaleData = CalculateMouseScale(m_size, mouse.hotPoint);
+
+    pos.x -= scaleData.scaledHotPoint.x;
+    pos.y -= scaleData.scaledHotPoint.y;
+
+    glm::ivec2 shadowPos = {
+        pos.x + scaleData.shadowOffset.x,
+        pos.y - scaleData.shadowOffset.y
+    };
 
     auto renderer = m_device->GetUIRenderer();
     renderer->SetTexture(m_miceTexture);
 
-    DrawMouseSprite(shadowPos, MOUSE_SIZE, MOUSE_TYPES.at(m_mouseType).iconShadow, TransparencyMode::WHITE);
-    DrawMouseSprite(pos, MOUSE_SIZE, MOUSE_TYPES.at(m_mouseType).icon1, MOUSE_TYPES.at(m_mouseType).mode1);
-    DrawMouseSprite(pos, MOUSE_SIZE, MOUSE_TYPES.at(m_mouseType).icon2, MOUSE_TYPES.at(m_mouseType).mode2);
+    DrawMouseSprite(shadowPos, scaleData.scaledSize, mouse.iconShadow, TransparencyMode::WHITE);
+    DrawMouseSprite(pos, scaleData.scaledSize, mouse.icon1, mouse.mode1);
+    DrawMouseSprite(pos, scaleData.scaledSize, mouse.icon2, mouse.mode2);
 
     SetInterfaceCoordinates();
+}
+
+CEngine::MouseScaleData CEngine::CalculateMouseScale(
+    glm::ivec2 windowSize,
+    glm::ivec2 hotPoint
+) const
+{
+    MouseScaleData result;
+
+    // Calculate scale factor based on window size (same pattern as font scaling)
+    static constexpr float REFERENCE_LENGTH = 1000.0f; // length(800, 600)
+    result.scale = glm::length(glm::vec2(windowSize)) / REFERENCE_LENGTH;
+    // Prevent cursor from becoming smaller than base size
+    result.scale = std::max(result.scale, 1.0f);
+
+    // Scale mouse size for Hi Res displays
+    result.scaledSize = glm::ivec2(
+        static_cast<int>(MOUSE_SIZE.x * result.scale),
+        static_cast<int>(MOUSE_SIZE.y * result.scale)
+    );
+
+    // Scale hotPoint to maintain correct cursor positioning
+    result.scaledHotPoint = glm::ivec2(
+        static_cast<int>(hotPoint.x * result.scale),
+        static_cast<int>(hotPoint.y * result.scale)
+    );
+
+    // Scale shadow offset
+    result.shadowOffset = glm::ivec2(
+        static_cast<int>(MOUSE_SHADOW_OFFSET_X * result.scale),
+        static_cast<int>(MOUSE_SHADOW_OFFSET_Y * result.scale)
+    );
+
+    return result;
 }
 
 void CEngine::DrawMouseSprite(const glm::ivec2& pos, const glm::ivec2& size, int icon, TransparencyMode mode)

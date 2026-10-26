@@ -67,7 +67,7 @@ protected:
     void        UpdateCopyButton();
     void        ViewDisplayInfo();
     CObject*    SearchToto();
-
+    
 protected:
     Gfx::CEngine*       m_engine;
     CEventQueue*        m_event;

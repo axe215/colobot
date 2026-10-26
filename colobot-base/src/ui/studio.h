@@ -80,6 +80,8 @@ protected:
     void        StopDialog();
     bool        EventDialog(const Event &event);
 
+    glm::vec2   ClampWindowBounds(glm::vec2 position, glm::vec2 dimension);
+
 protected:
     Gfx::CEngine*    m_engine;
     CEventQueue*     m_event;
