@@ -718,8 +718,9 @@ bool CApplication::CreateVideoSurface()
 {
     Uint32 videoFlags = SDL_WINDOW_OPENGL;
 
+    // Borderless fullscreen at the desktop resolution: no video mode switch, fast Alt+Tab
     if (m_deviceConfig->fullScreen)
-        videoFlags |= SDL_WINDOW_FULLSCREEN;
+        videoFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
     if (m_deviceConfig->resizeable)
         videoFlags |= SDL_WINDOW_RESIZABLE;
@@ -829,16 +830,15 @@ bool CApplication::CreateVideoSurface()
 
     m_private->glcontext = SDL_GL_CreateContext(m_private->window);
 
-    int vsync = 0;
-    if (GetConfigFile().GetIntProperty("Setup", "VSync", vsync))
-    {
-        m_engine->SetVSync(vsync);
-        TryToSetVSync();
-        vsync = m_engine->GetVSync();
-        GetConfigFile().SetIntProperty("Setup", "VSync", vsync);
+    // Without a saved setting the engine default is used instead of the driver default
+    int vsync = m_engine->GetVSync();
+    GetConfigFile().GetIntProperty("Setup", "VSync", vsync);
+    m_engine->SetVSync(vsync);
+    TryToSetVSync();
+    vsync = m_engine->GetVSync();
+    GetConfigFile().SetIntProperty("Setup", "VSync", vsync);
 
-        GetLogger()->Info("Using Vsync: %%", (vsync == -1 ? "adaptive" : (vsync ? "true" : "false")));
-    }
+    GetLogger()->Info("Using Vsync: %%", (vsync == -1 ? "adaptive" : (vsync ? "true" : "false")));
 
     return true;
 }
@@ -878,7 +878,7 @@ bool CApplication::ChangeVideoConfig(const Gfx::DeviceConfig &newConfig, bool is
         // It appears that "doesn't work" means "is a no-op"
         SDL_SetWindowSize(m_private->window, m_deviceConfig->size.x, m_deviceConfig->size.y);
     }
-    SDL_SetWindowFullscreen(m_private->window, m_deviceConfig->fullScreen ? SDL_WINDOW_FULLSCREEN : 0);
+    SDL_SetWindowFullscreen(m_private->window, m_deviceConfig->fullScreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 
     TryToSetVSync();
 

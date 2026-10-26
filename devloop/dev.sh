@@ -54,6 +54,7 @@ EOF
         "-DVCPKG_INSTALL_OPTIONS=--clean-after-build" \
         -DGLEW_STATIC=ON -DSNDFILE_STATIC=ON -DTESTS=OFF -DTOOLS=OFF \
         -DDESKTOP=ON `# под Windows это только colobot.rc с иконкой, без него configure падает` \
+        -DCOLOBOT_HIDE_CONSOLE=ON `# без окна консоли; лог пишется в log.txt` \
         -DCMAKE_EXE_LINKER_FLAGS=-static \
         "-DCMAKE_CXX_STANDARD_LIBRARIES=$WIN_STATIC_LIBS" \
         -DCMAKE_INSTALL_PREFIX="$DIST_WIN"

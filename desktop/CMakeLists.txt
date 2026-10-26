@@ -164,6 +164,12 @@ endif(PLATFORM_MACOSX)
 
 if(WIN32)
     set(COLOBOT_VERSION_4COMMAS "${CMAKE_PROJECT_VERSION_MAJOR},${CMAKE_PROJECT_VERSION_MINOR},${CMAKE_PROJECT_VERSION_PATCH},0")
+    # MSVC's linker embeds its own manifest, so ours goes into the resources only for MinGW
+    if(MINGW)
+        set(COLOBOT_RC_MANIFEST "1 24 \"${CMAKE_CURRENT_SOURCE_DIR}/colobot.manifest\"")
+    else()
+        set(COLOBOT_RC_MANIFEST "")
+    endif()
     configure_file(colobot.rc.cmake ${CMAKE_CURRENT_BINARY_DIR}/colobot.rc)
 endif()
 

@@ -256,7 +256,7 @@ CEngine::CEngine(CApplication *app, CSystemUtils* systemUtils)
     m_terrainShadows = false;
     m_shadowRange = 0.0f;
     m_multisample = 2;
-    m_vsync = 0;
+    m_vsync = -1; // adaptive, falls back to regular vsync (see CApplication::TryToSetVSync)
 
     m_backForce = true;
     m_lightMode = true;
