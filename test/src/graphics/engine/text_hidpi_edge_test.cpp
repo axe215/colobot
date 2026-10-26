@@ -320,7 +320,7 @@ TEST_F(CEngineHiDPIEdgeTest, CalculateMouseScale_ZeroWindowSize_Returns1_0)
     // Should not crash, should clamp to 1.0
     auto result = m_engine->CalculateMouseScaleForTest(windowSize, hotPoint);
 
-    // Length of (0,0) is 0, so scale = 0 / 1000 = 0, clamped to 1.0
+    // Height 0 gives scale 0, clamped to 1.0
     EXPECT_FLOAT_EQ(result.scale, 1.0f);
     EXPECT_EQ(result.scaledSize.x, 32);
     EXPECT_EQ(result.scaledSize.y, 32);
@@ -338,8 +338,7 @@ TEST_F(CEngineHiDPIEdgeTest, CalculateMouseScale_NegativeWindowSize_Returns1_0)
     // Should not crash
     auto result = m_engine->CalculateMouseScaleForTest(windowSize, hotPoint);
 
-    // Length of negative vector is positive, so scale will be positive
-    // length(-800,-600) = length(800,600) = 1000, so scale = 1000/1000 = 1.0
+    // Height -600 gives a negative scale, clamped to 1.0
     EXPECT_FLOAT_EQ(result.scale, 1.0f);
 }
 
@@ -387,8 +386,8 @@ TEST_F(CEngineHiDPIEdgeTest, CalculateMouseScale_VeryLargeWindowSize_ClampedReas
 
     auto result = m_engine->CalculateMouseScaleForTest(windowSize, hotPoint);
 
-    // Scale should be around 8.8 for 8K
-    float expectedScale = std::sqrt(7680*7680 + 4320*4320) / std::sqrt(800*800 + 600*600);
+    // Scale = 4320 / 600 = 7.2 for 8K
+    float expectedScale = 7.2f;
     EXPECT_NEAR(result.scale, expectedScale, 0.01f);
 
     // Mouse should scale proportionally but remain usable

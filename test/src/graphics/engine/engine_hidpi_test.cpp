@@ -102,7 +102,7 @@ TEST_F(CEngineHiDPITest, CalculateMouseScale_1600x1200_Returns2_0)
 
     auto result = m_engine->CalculateMouseScaleForTest(windowSize, hotPoint);
 
-    // Scale = length(1600,1200) / length(800,600) = 2000 / 1000 = 2.0
+    // Scale = 1200 / 600 = 2.0
     EXPECT_FLOAT_EQ(result.scale, 2.0f);
     EXPECT_EQ(result.scaledSize.x, 64);
     EXPECT_EQ(result.scaledSize.y, 64);
@@ -117,13 +117,8 @@ TEST_F(CEngineHiDPITest, CalculateMouseScale_1920x1080_ReturnsCorrectScale)
 
     auto result = m_engine->CalculateMouseScaleForTest(windowSize, hotPoint);
 
-    // Scale = length(1920,1080) / length(800,600)
-    // = sqrt(1920^2 + 1080^2) / sqrt(800^2 + 600^2)
-    // = sqrt(3686400 + 1166400) / sqrt(640000 + 360000)
-    // = sqrt(4852800) / sqrt(1000000)
-    // = 2202.909 / 1000
-    // ≈ 2.2029
-    float expectedScale = std::sqrt(1920*1920 + 1080*1080) / std::sqrt(800*800 + 600*600);
+    // Scale = 1080 / 600 = 1.8 (height only)
+    float expectedScale = 1.8f;
     EXPECT_NEAR(result.scale, expectedScale, 0.001f);
     EXPECT_EQ(result.scaledSize.x, static_cast<int>(32 * expectedScale));
     EXPECT_EQ(result.scaledSize.y, static_cast<int>(32 * expectedScale));
@@ -136,7 +131,7 @@ TEST_F(CEngineHiDPITest, CalculateMouseScale_640x480_ClampedTo1_0)
 
     auto result = m_engine->CalculateMouseScaleForTest(windowSize, hotPoint);
 
-    // Without clamping: scale = 800 / 1000 = 0.8
+    // Without clamping: scale = 480 / 600 = 0.8
     // With clamping: scale = max(0.8, 1.0) = 1.0
     EXPECT_FLOAT_EQ(result.scale, 1.0f);
     EXPECT_EQ(result.scaledSize.x, 32);
@@ -196,6 +191,19 @@ TEST_F(CEngineHiDPITest, CalculateMouseScale_PreservesAspectRatio)
     EXPECT_EQ(result.scaledHotPoint.x, result.scaledHotPoint.y);
 }
 
+TEST_F(CEngineHiDPITest, CalculateMouseScale_3440x1440_UltrawideSameAs2560x1440)
+{
+    glm::ivec2 hotPoint(8, 8);
+
+    auto ultrawide = m_engine->CalculateMouseScaleForTest(glm::ivec2(3440, 1440), hotPoint);
+    auto widescreen = m_engine->CalculateMouseScaleForTest(glm::ivec2(2560, 1440), hotPoint);
+
+    // Only the height matters: 1440 / 600 = 2.4
+    EXPECT_FLOAT_EQ(ultrawide.scale, 2.4f);
+    EXPECT_EQ(ultrawide.scaledSize, widescreen.scaledSize);
+    EXPECT_EQ(ultrawide.scaledHotPoint, widescreen.scaledHotPoint);
+}
+
 TEST_F(CEngineHiDPITest, CalculateMouseScale_3840x2160_4K)
 {
     glm::ivec2 windowSize(3840, 2160);
@@ -203,13 +211,8 @@ TEST_F(CEngineHiDPITest, CalculateMouseScale_3840x2160_4K)
 
     auto result = m_engine->CalculateMouseScaleForTest(windowSize, hotPoint);
 
-    // Scale = length(3840,2160) / length(800,600)
-    // = sqrt(3840^2 + 2160^2) / 1000
-    // = sqrt(14745600 + 4665600) / 1000
-    // = sqrt(19411200) / 1000
-    // = 4405.815 / 1000
-    // ≈ 4.406
-    float expectedScale = std::sqrt(3840*3840 + 2160*2160) / std::sqrt(800*800 + 600*600);
+    // Scale = 2160 / 600 = 3.6
+    float expectedScale = 3.6f;
     EXPECT_NEAR(result.scale, expectedScale, 0.001f);
 
     // Verify all components scale correctly

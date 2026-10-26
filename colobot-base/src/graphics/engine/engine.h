@@ -56,7 +56,7 @@ struct Event;
 namespace Gfx
 {
 
-// Reference size for HiDPI scaling (same as font reference)
+// Window size the font and mouse cursor sizes are designed for; they scale with the window height
 constexpr glm::ivec2 REFERENCE_SIZE(800, 600);
 
 class CDevice;

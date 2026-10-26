@@ -4619,9 +4619,8 @@ CEngine::MouseScaleData CEngine::CalculateMouseScale(
 {
     MouseScaleData result;
 
-    // Calculate scale factor based on window size (same pattern as font scaling)
-    static constexpr float REFERENCE_LENGTH = 1000.0f; // length(800, 600)
-    result.scale = glm::length(glm::vec2(windowSize)) / REFERENCE_LENGTH;
+    // Same height-based scale as fonts (see CText::GetFontPointSize)
+    result.scale = static_cast<float>(windowSize.y) / REFERENCE_SIZE.y;
     // Prevent cursor from becoming smaller than base size
     result.scale = std::max(result.scale, 1.0f);
 

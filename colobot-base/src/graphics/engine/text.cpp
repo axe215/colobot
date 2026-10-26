@@ -1258,16 +1258,14 @@ void CText::DrawCharAndAdjustPos(StrUtils::CodePoint ch, FontType font, float si
 
 int CText::GetFontPointSize(float size) const
 {
-    // length(800, 600) — constant, avoid recomputing each call
-    static constexpr float REFERENCE_LENGTH = 1000.0f;
-
+    // Font sizes are given for an 800x600 window and scale with the window height only,
+    // so text keeps the same size on 4:3, 16:9 and 21:9 screens of the same height
     glm::ivec2 windowSize = m_engine->GetWindowSize();
-    float windowLength = glm::length(glm::vec2(windowSize));
 
-    if (windowLength < 1.0f)
+    if (windowSize.y < 1)
         return static_cast<int>(size);
 
-    return static_cast<int>(size * (windowLength / REFERENCE_LENGTH));
+    return static_cast<int>(size * windowSize.y / static_cast<float>(REFERENCE_SIZE.y));
 }
 
 CachedFont* CText::GetOrOpenFont(FontType type, float size)
