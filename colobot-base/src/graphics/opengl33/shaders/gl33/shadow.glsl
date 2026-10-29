@@ -46,6 +46,17 @@ vec3[4] ProjectShadows(vec3 position)
 }
 
 // Calculates shadow based on array of shadow coordinates
+// Poisson disk for soft shadow edges; every tap is also a 2x2 hardware PCF lookup
+const vec2 c_PoissonDisk[12] = vec2[](
+    vec2(-0.326, -0.406), vec2(-0.840, -0.074), vec2(-0.696,  0.457),
+    vec2(-0.203,  0.621), vec2( 0.962, -0.195), vec2( 0.473, -0.480),
+    vec2( 0.519,  0.767), vec2( 0.185, -0.893), vec2( 0.507,  0.064),
+    vec2( 0.896,  0.412), vec2(-0.322, -0.933), vec2(-0.792, -0.598)
+);
+
+// Radius of the soft edge in shadow map texels
+const float c_ShadowSoftness = 1.75;
+
 float CalculateShadow(vec3 projected[4])
 {
     for (int i = 0; i < uni_ShadowRegions; i++)
@@ -56,18 +67,18 @@ float CalculateShadow(vec3 projected[4])
         vec2 uv = projected[i].xy * uni_ShadowParam[i].uv_scale + uni_ShadowParam[i].uv_offset;
         float depth = projected[i].z;
 
-        vec3 coord = vec3(uv, depth);
+        // Taps must stay inside this region of the shadow map atlas
+        vec2 texel = 1.0 / vec2(textureSize(uni_ShadowMap, 0));
+        vec2 regionMin = uni_ShadowParam[i].uv_offset + texel;
+        vec2 regionMax = uni_ShadowParam[i].uv_offset + uni_ShadowParam[i].uv_scale - texel;
 
-        /*
-        float value = texture(uni_ShadowMap, coord);
-        value += textureOffset(uni_ShadowMap, coord, ivec2( 1, 0));
-        value += textureOffset(uni_ShadowMap, coord, ivec2(-1, 0));
-        value += textureOffset(uni_ShadowMap, coord, ivec2( 0, 1));
-        value += textureOffset(uni_ShadowMap, coord, ivec2( 0,-1));
-        return value * (1.0f / 5.0f);
-        // */
-
-        return texture(uni_ShadowMap, coord);
+        float value = 0.0;
+        for (int k = 0; k < 12; k++)
+        {
+            vec2 tap = clamp(uv + c_PoissonDisk[k] * texel * c_ShadowSoftness, regionMin, regionMax);
+            value += texture(uni_ShadowMap, vec3(tap, depth));
+        }
+        return value * (1.0 / 12.0);
     }
 
     return 1.0;
