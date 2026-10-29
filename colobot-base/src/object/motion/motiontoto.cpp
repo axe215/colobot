@@ -312,7 +312,7 @@ bool CMotionToto::EventFrame(const Event &event)
     // Calculates the new position.
     if ( m_bDisplayInfo )
     {
-        wDim = m_engine->GetWindowSize();
+        wDim = m_engine->GetInterfaceSize();  // SatCom is in the 4:3 interface area
         nPos.x = -4.0f*(static_cast< float >(wDim.x)/static_cast< float >(wDim.y))/(640.0f/480.0f);
         nPos.y = -0.5f;
         nPos.z =  7.0f;  // in the left margin

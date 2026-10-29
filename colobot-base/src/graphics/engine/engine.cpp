@@ -416,10 +416,7 @@ bool CEngine::Create()
     m_matWorldInterface = glm::mat4(1.0f);
     m_matViewInterface = glm::mat4(1.0f);
 
-    auto renderer = m_device->GetUIRenderer();
-    renderer->SetProjection(0.0f, 1.0f, 0.0f, 1.0f);
-
-    Math::LoadOrthoProjectionMatrix(m_matProjInterface, 0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+    SetInterfaceCoordinates();
 
     TextureCreateParams params;
     params.format = TextureFormat::AUTO;
@@ -633,28 +630,66 @@ glm::ivec2 CEngine::GetWindowSize()
     return m_size;
 }
 
+glm::ivec2 CEngine::GetInterfaceSize()
+{
+    // The interface is designed for 640x480: wider windows get side margins instead of stretching it
+    constexpr float INTERFACE_ASPECT = 4.0f / 3.0f;
+    int width = static_cast<int>(m_size.y * INTERFACE_ASPECT + 0.5f);
+    return { std::min(width, m_size.x), m_size.y };
+}
+
+float CEngine::GetInterfaceLeft()
+{
+    glm::ivec2 interfaceSize = GetInterfaceSize();
+    if (interfaceSize.x <= 0)
+        return 0.0f;
+
+    return -0.5f * static_cast<float>(m_size.x - interfaceSize.x) / static_cast<float>(interfaceSize.x);
+}
+
+float CEngine::GetInterfaceRight()
+{
+    return 1.0f - GetInterfaceLeft();
+}
+
 glm::vec2 CEngine::WindowToInterfaceCoords(const glm::ivec2& pos)
 {
-    return { static_cast<float>(pos.x) / static_cast<float>(m_size.x),
+    glm::ivec2 interfaceSize = GetInterfaceSize();
+    return { GetInterfaceLeft() + static_cast<float>(pos.x) / static_cast<float>(interfaceSize.x),
              1.0f - static_cast<float>(pos.y) / static_cast<float>(m_size.y) };
 }
 
 glm::ivec2 CEngine::InterfaceToWindowCoords(const glm::vec2& pos)
 {
-    return { static_cast<int>(pos.x * m_size.x),
+    glm::ivec2 interfaceSize = GetInterfaceSize();
+    return { static_cast<int>((pos.x - GetInterfaceLeft()) * interfaceSize.x),
              static_cast<int>((1.0f - pos.y) * m_size.y) };
 }
 
 glm::vec2 CEngine::WindowToInterfaceSize(const glm::ivec2& size)
 {
-    return { static_cast<float>(size.x) / static_cast<float>(m_size.x),
+    glm::ivec2 interfaceSize = GetInterfaceSize();
+    return { static_cast<float>(size.x) / static_cast<float>(interfaceSize.x),
              static_cast<float>(size.y) / static_cast<float>(m_size.y) };
 }
 
 glm::ivec2 CEngine::InterfaceToWindowSize(const glm::vec2& size)
 {
-    return { static_cast<int>(size.x * m_size.x),
+    glm::ivec2 interfaceSize = GetInterfaceSize();
+    return { static_cast<int>(size.x * interfaceSize.x),
              static_cast<int>(size.y * m_size.y) };
+}
+
+glm::vec2 CEngine::InterfaceToScreenCoords(const glm::vec2& pos)
+{
+    float left = GetInterfaceLeft();
+    return { (pos.x - left) / (GetInterfaceRight() - left), pos.y };
+}
+
+glm::vec2 CEngine::ScreenToInterfaceCoords(const glm::vec2& pos)
+{
+    float left = GetInterfaceLeft();
+    return { left + pos.x * (GetInterfaceRight() - left), pos.y };
 }
 
 void CEngine::AddStatisticTriangle(int count)
@@ -1591,8 +1626,11 @@ bool CEngine::DetectBBox(int objRank, const glm::vec2& mouse)
              mouse.y <= max.y );
 }
 
-int CEngine::DetectObject(const glm::vec2& mouse, glm::vec3& targetPos, bool terrain)
+int CEngine::DetectObject(const glm::vec2& mousePos, glm::vec3& targetPos, bool terrain)
 {
+    // The mouse position is in interface coordinates, picking works with the 3D projection
+    glm::vec2 mouse = InterfaceToScreenCoords(mousePos);
+
     float min = 1000000.0f;
     int nearest = -1;
     glm::vec3 pos{ 0, 0, 0 };
@@ -3268,6 +3306,8 @@ void CEngine::DrawCaptured3DScene()
 {
     m_device->SetDepthTest(false);
 
+    SetScreenCoordinates();
+
     auto renderer = m_device->GetUIRenderer();
     renderer->SetTexture(m_capturedWorldTexture);
     renderer->SetTransparency(TransparencyMode::NONE);
@@ -3279,6 +3319,8 @@ void CEngine::DrawCaptured3DScene()
     vertices[3] = { { 1.0f, 1.0f }, { 1.0f, 1.0f } };
 
     renderer->EndPrimitive();
+
+    SetInterfaceCoordinates();
 }
 
 void CEngine::RenderDebugSphere(const Math::Sphere& sphere, const glm::mat4& transform, const Gfx::Color& color)
@@ -4290,6 +4332,8 @@ void CEngine::DrawShadowSpots()
 
 void CEngine::DrawBackground()
 {
+    SetScreenCoordinates();
+
     if (m_cloud->GetLevel() != 0.0f)  // clouds ?
     {
         if (m_backgroundCloudUp != m_backgroundCloudDown)  // degraded?
@@ -4305,6 +4349,8 @@ void CEngine::DrawBackground()
     {
         DrawBackgroundImage();  // image
     }
+
+    SetInterfaceCoordinates();
 }
 
 void CEngine::DrawBackgroundGradient(const Color& up, const Color& down)
@@ -4414,9 +4460,13 @@ void CEngine::DrawPlanet()
     if (! m_planet->PlanetExist())
         return;
 
+    // Planets belong to the sky, so they cover the whole window
+    glm::mat4 projScreen;
+    Math::LoadOrthoProjectionMatrix(projScreen, 0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+
     auto renderer = m_device->GetObjectRenderer();
     renderer->Begin();
-    renderer->SetProjectionMatrix(m_matProjInterface);
+    renderer->SetProjectionMatrix(projScreen);
     renderer->SetViewMatrix(m_matViewInterface);
     renderer->SetModelMatrix(m_matWorldInterface);
     renderer->SetFog(1e+6, 1e+6, {});
@@ -4444,6 +4494,8 @@ void CEngine::DrawForegroundImage()
     float v1 = 0.2f;
     float v2 = 1.0f;
 
+    SetScreenCoordinates();
+
     auto renderer = m_device->GetUIRenderer();
     renderer->SetTexture(m_foregroundTex);
     renderer->SetTransparency(TransparencyMode::BLACK);
@@ -4456,6 +4508,8 @@ void CEngine::DrawForegroundImage()
 
     renderer->EndPrimitive();
     AddStatisticTriangle(2);
+
+    SetInterfaceCoordinates();
 }
 
 void CEngine::DrawOverColor()
@@ -4476,6 +4530,8 @@ void CEngine::DrawOverColor()
         { 0, 0, 0, 0 }
     };
 
+    SetScreenCoordinates();
+
     auto renderer = m_device->GetUIRenderer();
     renderer->SetTexture(Texture{});
     renderer->SetTransparency(m_overMode);
@@ -4488,6 +4544,8 @@ void CEngine::DrawOverColor()
 
     renderer->EndPrimitive();
     AddStatisticTriangle(2);
+
+    SetInterfaceCoordinates();
 }
 
 void CEngine::DrawHighlight()
@@ -4548,6 +4606,8 @@ void CEngine::DrawHighlight()
 
     glm::u8vec4 color(255, 255, 0, 255);  // yellow
 
+    SetScreenCoordinates();
+
     auto renderer = m_device->GetUIRenderer();
     renderer->SetTransparency(TransparencyMode::NONE);
     renderer->SetTexture(Texture{});
@@ -4578,6 +4638,8 @@ void CEngine::DrawHighlight()
     line[1] = { { p1.x, p2.y }, {}, color };
     line[2] = { { p1.x, p2.y - dy }, {}, color };
     renderer->EndPrimitive();
+
+    SetInterfaceCoordinates();
 }
 
 void CEngine::DrawMouse()
@@ -4589,7 +4651,7 @@ void CEngine::DrawMouse()
     SetWindowCoordinates();
 
     glm::vec2 mousePos = CInput::GetInstancePointer()->GetMousePos();
-    glm::ivec2 pos(mousePos.x * m_size.x, m_size.y - mousePos.y * m_size.y);
+    glm::ivec2 pos = InterfaceToWindowCoords(mousePos);
 
     const EngineMouse& mouse = MOUSE_TYPES.at(m_mouseType);
     MouseScaleData scaleData = CalculateMouseScale(m_size, mouse.hotPoint);
@@ -5039,6 +5101,17 @@ void CEngine::SetDebugGotoBitmap(std::unique_ptr<CImage> debugImage)
 }
 
 void CEngine::SetInterfaceCoordinates()
+{
+    float left = GetInterfaceLeft();
+    float right = GetInterfaceRight();
+
+    auto renderer = m_device->GetUIRenderer();
+    renderer->SetProjection(left, right, 0.0f, 1.0f);
+
+    Math::LoadOrthoProjectionMatrix(m_matProjInterface, left, right, 0.0f, 1.0f, -1.0f, 1.0f);
+}
+
+void CEngine::SetScreenCoordinates()
 {
     auto renderer = m_device->GetUIRenderer();
     renderer->SetProjection(0.0f, 1.0f, 0.0f, 1.0f);

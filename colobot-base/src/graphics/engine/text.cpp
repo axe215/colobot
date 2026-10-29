@@ -524,7 +524,7 @@ void CText::DrawText(const std::string &text, std::vector<FontMetaChar>::iterato
     }
 
     glm::ivec2 intPos = m_engine->InterfaceToWindowCoords(pos);
-    int intWidth = width * m_engine->GetWindowSize().x;
+    int intWidth = m_engine->InterfaceToWindowSize({ width, 0.0f }).x;
     DrawString(text, format, end, size, intPos, intWidth, eol, color);
 }
 
@@ -548,7 +548,7 @@ void CText::DrawText(const std::string &text, FontType font,
     }
 
     glm::ivec2 intPos = m_engine->InterfaceToWindowCoords(pos);
-    int intWidth = width * m_engine->GetWindowSize().x;
+    int intWidth = m_engine->InterfaceToWindowSize({ width, 0.0f }).x;
     DrawString(text, font, size, intPos, intWidth, eol, color);
 }
 
@@ -690,9 +690,9 @@ float CText::GetCharWidth(StrUtils::CodePoint ch, FontType font, float size, flo
 {
     if (font == FONT_BUTTON)
     {
-        glm::ivec2 windowSize = m_engine->GetWindowSize();
+        glm::ivec2 interfaceSize = m_engine->GetInterfaceSize();
         float height = GetHeight(FONT_COMMON, size);
-        float width = height*(static_cast<float>(windowSize.y)/windowSize.x);
+        float width = height*(static_cast<float>(interfaceSize.y)/interfaceSize.x);
         return width;
     }
 
@@ -732,9 +732,9 @@ int CText::GetCharWidthInt(StrUtils::CodePoint ch, FontType font, float size, fl
 {
     if (font == FONT_BUTTON)
     {
-        glm::ivec2 windowSize = m_engine->GetWindowSize();
+        glm::ivec2 interfaceSize = m_engine->GetInterfaceSize();
         int height = GetHeightInt(FONT_COMMON, size);
-        int width = height*(static_cast<float>(windowSize.y)/windowSize.x);
+        int width = height*(static_cast<float>(interfaceSize.y)/interfaceSize.x);
         return width;
     }
 

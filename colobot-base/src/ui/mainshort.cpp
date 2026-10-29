@@ -91,7 +91,7 @@ bool CMainShort::CreateShortcuts()
     m_shortcuts.clear();
 
 
-    glm::ivec2 size = m_engine->GetWindowSize();
+    glm::ivec2 size = m_engine->GetInterfaceSize();
     float ratio = static_cast<float>(size.y) / static_cast<float>(size.x);
 
     // Display pause / movie indicator

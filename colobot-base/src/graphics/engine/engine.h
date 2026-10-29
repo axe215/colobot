@@ -498,11 +498,32 @@ public:
     glm::ivec2      GetWindowSize();
 
     //@{
+    //! Horizontal extent of the window in interface coordinates
+    /** The interface is designed for 4:3 (640x480). On wider windows the (0,0)-(1,1) area keeps
+        its proportions and is centered; the margins left and right of it have x < 0 and x > 1.
+        On 4:3 and narrower windows this is exactly 0..1. */
+    float           GetInterfaceLeft();
+    float           GetInterfaceRight();
+    //@}
+
+    //! Size in pixels of the (0,0)-(1,1) interface area
+    glm::ivec2      GetInterfaceSize();
+
+    //@{
     //! Conversion functions between window and interface coordinates
     /** Window coordinates are from top-left (0,0) to bottom-right (w,h) - size of window
-        Interface cords are from bottom-left (0,0) to top-right (1,1) - and do not depend on window size */
+        Interface cords are from bottom-left (0,0) to top-right (1,1) of the 4:3 interface area
+        (see GetInterfaceLeft()) - and do not depend on window size */
     glm::vec2       WindowToInterfaceCoords(const glm::ivec2& pos);
     glm::ivec2      InterfaceToWindowCoords(const glm::vec2& pos);
+    //@}
+
+    //@{
+    //! Conversion functions between interface and screen coordinates
+    /** Screen coordinates are from bottom-left (0,0) to top-right (1,1) of the whole window,
+        as used by the 3D projection (object picking, highlight, camera) */
+    glm::vec2       InterfaceToScreenCoords(const glm::vec2& pos);
+    glm::vec2       ScreenToInterfaceCoords(const glm::vec2& pos);
     //@}
 
     //@{
@@ -626,7 +647,8 @@ public:
 
     //! Detects the target object that is selected with the mouse
     /** Returns the rank of the object or -1. */
-    int             DetectObject(const glm::vec2& mouse, glm::vec3& targetPos, bool terrain = false);
+    //! Returns the object under the mouse (position in interface coordinates)
+    int             DetectObject(const glm::vec2& mousePos, glm::vec3& targetPos, bool terrain = false);
 
     //! Creates a shadow for the given object
     void            CreateShadowSpot(int objRank);
@@ -979,6 +1001,8 @@ public:
 
     void            SetWindowCoordinates();
     void            SetInterfaceCoordinates();
+    //! Sets UI renderer projection to screen coordinates (0..1 over the whole window)
+    void            SetScreenCoordinates();
 
     void            EnablePauseBlur();
     void            DisablePauseBlur();

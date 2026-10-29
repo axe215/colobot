@@ -1419,9 +1419,10 @@ bool CObjectInterface::CreateInterface(bool bSelect)
         pos.y = 0.5f-ddim.y/2.0f;
         pw->CreateGroup(pos, ddim, 12, EVENT_OBJECT_CROSSHAIR);
 
-        pos.x  =  20.0f/640.0f;
+        // Aiming works over the whole window width, margins of wide screens included
+        pos.x  = m_engine->GetInterfaceLeft() + 20.0f/640.0f;
         pos.y  = 100.0f/480.0f;
-        ddim.x = 600.0f/640.0f;
+        ddim.x = m_engine->GetInterfaceRight() - m_engine->GetInterfaceLeft() - 40.0f/640.0f;
         ddim.y = 340.0f/480.0f;
         pt = pw->CreateTarget(pos, ddim, 0, EVENT_OBJECT_TARGET);
         pt->ClearState(STATE_GLINT);
@@ -1430,27 +1431,31 @@ bool CObjectInterface::CreateInterface(bool bSelect)
     if (type != OBJECT_HUMAN &&
         type != OBJECT_TECH)
     {
+        // Corners frame the whole window
+        float left = m_engine->GetInterfaceLeft();
+        float right = m_engine->GetInterfaceRight();
+
         ddim.x = 64.0f / 640.0f;
         ddim.y = 64.0f / 480.0f;
-        pos.x = 30.0f / 640.0f;
+        pos.x = left + 30.0f / 640.0f;
         pos.y = 430.0f / 480.0f - ddim.y;
         pw->CreateGroup(pos, ddim, 13, EVENT_OBJECT_CORNERul);
 
         ddim.x = 64.0f / 640.0f;
         ddim.y = 64.0f / 480.0f;
-        pos.x = 610.0f / 640.0f - ddim.x;
+        pos.x = right - 30.0f / 640.0f - ddim.x;
         pos.y = 430.0f / 480.0f - ddim.y;
         pw->CreateGroup(pos, ddim, 14, EVENT_OBJECT_CORNERur);
 
         ddim.x = 64.0f / 640.0f;
         ddim.y = 64.0f / 480.0f;
-        pos.x = 30.0f / 640.0f;
+        pos.x = left + 30.0f / 640.0f;
         pos.y = 110.0f / 480.0f;
         pw->CreateGroup(pos, ddim, 15, EVENT_OBJECT_CORNERdl);
 
         ddim.x = 64.0f / 640.0f;
         ddim.y = 64.0f / 480.0f;
-        pos.x = 610.0f / 640.0f - ddim.x;
+        pos.x = right - 30.0f / 640.0f - ddim.x;
         pos.y = 110.0f / 480.0f;
         pw->CreateGroup(pos, ddim, 16, EVENT_OBJECT_CORNERdr);
     }

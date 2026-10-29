@@ -970,14 +970,16 @@ bool CCamera::EventProcess(const Event &event)
 
         if (m_oldCameraScroll)
         {
-            if (event.mousePos.x < MOUSE_EDGE_MARGIN)
-                m_mouseDeltaEdge.x = event.mousePos.x / MOUSE_EDGE_MARGIN - 1.0f;
-            if (event.mousePos.x > 1.0f - MOUSE_EDGE_MARGIN)
-                m_mouseDeltaEdge.x = 1.0f - (1.0f - event.mousePos.x) / MOUSE_EDGE_MARGIN;
-            if (event.mousePos.y < MOUSE_EDGE_MARGIN)
-                m_mouseDeltaEdge.y = event.mousePos.y / MOUSE_EDGE_MARGIN - 1.0f;
-            if (event.mousePos.y > 1.0f - MOUSE_EDGE_MARGIN)
-                m_mouseDeltaEdge.y = 1.0f - (1.0f - event.mousePos.y) / MOUSE_EDGE_MARGIN;
+            // Edges of the window, not of the interface area
+            glm::vec2 screenPos = m_engine->InterfaceToScreenCoords(event.mousePos);
+            if (screenPos.x < MOUSE_EDGE_MARGIN)
+                m_mouseDeltaEdge.x = screenPos.x / MOUSE_EDGE_MARGIN - 1.0f;
+            if (screenPos.x > 1.0f - MOUSE_EDGE_MARGIN)
+                m_mouseDeltaEdge.x = 1.0f - (1.0f - screenPos.x) / MOUSE_EDGE_MARGIN;
+            if (screenPos.y < MOUSE_EDGE_MARGIN)
+                m_mouseDeltaEdge.y = screenPos.y / MOUSE_EDGE_MARGIN - 1.0f;
+            if (screenPos.y > 1.0f - MOUSE_EDGE_MARGIN)
+                m_mouseDeltaEdge.y = 1.0f - (1.0f - screenPos.y) / MOUSE_EDGE_MARGIN;
 
             if (m_type == CAM_TYPE_FREE  ||
                 m_type == CAM_TYPE_EDIT  ||

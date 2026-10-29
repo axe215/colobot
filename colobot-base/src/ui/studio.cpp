@@ -300,9 +300,10 @@ bool CStudio::EventProcess(const Event &event)
         }
         else
         {
-            m_editFinalPos.x = 0.00f;
+            // Maximized editor uses the whole window width, margins of wide screens included
+            m_editFinalPos.x = m_engine->GetInterfaceLeft();
             m_editFinalPos.y = 0.00f;
-            m_editFinalDim.x = 1.00f;
+            m_editFinalDim.x = m_engine->GetInterfaceRight() - m_engine->GetInterfaceLeft();
             m_editFinalDim.y = 1.00f;
             m_bEditMinimized = false;
             m_bEditMaximized = true;
@@ -604,9 +605,9 @@ void CStudio::StartEditScript(CScript *script, std::string name, Program* progra
 
     if ( m_bEditMaximized )
     {
-        m_editFinalPos.x = 0.00f;
+        m_editFinalPos.x = m_engine->GetInterfaceLeft();
         m_editFinalPos.y = 0.00f;
-        m_editFinalDim.x = 1.00f;
+        m_editFinalDim.x = m_engine->GetInterfaceRight() - m_engine->GetInterfaceLeft();
         m_editFinalDim.y = 1.00f;
     }
     else
@@ -1236,9 +1237,12 @@ glm::vec2 CStudio::ClampWindowBounds(glm::vec2 position, glm::vec2 dimension)
 {
     glm::vec2 result = position;
 
-    if (result.x < 0.0f) result.x = 0.0f;
+    float left = m_engine->GetInterfaceLeft();
+    float right = m_engine->GetInterfaceRight();
+
+    if (result.x < left) result.x = left;
     if (result.y < 0.0f) result.y = 0.0f;
-    if (result.x + dimension.x > 1.0f) result.x = 1.0f - dimension.x;
+    if (result.x + dimension.x > right) result.x = right - dimension.x;
     if (result.y + dimension.y > 1.0f) result.y = 1.0f - dimension.y;
 
     return result;

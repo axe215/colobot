@@ -2236,7 +2236,7 @@ void CRobotMain::CreateTooltip(const glm::vec2& position, const std::string& tex
     glm::vec2 offset;
     offset.x = 0.0f;
     offset.y = 0.0f;
-    if (pos.x+dim.x > 1.0f) offset.x = 1.0f-(pos.x+dim.x);
+    if (pos.x+dim.x > m_engine->GetInterfaceRight()) offset.x = m_engine->GetInterfaceRight()-(pos.x+dim.x);
     if (pos.y       < 0.0f) offset.y = -pos.y;
 
     corner.x += offset.x;
