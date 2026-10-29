@@ -101,6 +101,8 @@ void CModManager::FindMods()
         Mod mod{};
         mod.name = newMod.first;
         mod.path = newMod.second;
+        // Bundled HD textures are on until the player turns them off
+        mod.enabled = (mod.name == "HDTextures");
         m_mods.push_back(mod);
     }
 
