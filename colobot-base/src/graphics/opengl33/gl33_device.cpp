@@ -22,6 +22,7 @@
 #include "graphics/opengl33/gl33_object_renderer.h"
 #include "graphics/opengl33/gl33_particle_renderer.h"
 #include "graphics/opengl33/gl33_shadow_renderer.h"
+#include "graphics/opengl33/gl33_postprocess_renderer.h"
 #include "graphics/opengl33/gl33_terrain_renderer.h"
 #include "graphics/opengl33/gl33_ui_renderer.h"
 #include "graphics/opengl33/glframebuffer.h"
@@ -199,6 +200,7 @@ bool CGL33Device::Create()
     m_objectRenderer = std::make_unique<CGL33ObjectRenderer>(this);
     m_particleRenderer = std::make_unique<CGL33ParticleRenderer>(this);
     m_shadowRenderer = std::make_unique<CGL33ShadowRenderer>(this);
+    m_postProcessRenderer = std::make_unique<CGL33PostProcessRenderer>(this);
 
     // create default framebuffer object
     FramebufferParams framebufferParams;
@@ -239,6 +241,7 @@ void CGL33Device::Destroy()
     m_objectRenderer = nullptr;
     m_particleRenderer = nullptr;
     m_shadowRenderer = nullptr;
+    m_postProcessRenderer = nullptr;
 }
 
 void CGL33Device::ConfigChanged(const DeviceConfig& newConfig)
@@ -311,6 +314,11 @@ CParticleRenderer* CGL33Device::GetParticleRenderer()
 CShadowRenderer* CGL33Device::GetShadowRenderer()
 {
     return m_shadowRenderer.get();
+}
+
+CPostProcessRenderer* CGL33Device::GetPostProcessRenderer()
+{
+    return m_postProcessRenderer.get();
 }
 
 /** If image is invalid, returns invalid texture.

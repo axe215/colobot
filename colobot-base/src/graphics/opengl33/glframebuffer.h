@@ -74,6 +74,8 @@ public:
     void Unbind() override;
 
     void CopyToScreen(int fromX, int fromY, int fromWidth, int fromHeight, int toX, int toY, int toWidth, int toHeight) override;
+
+    void CopyToFramebuffer(CFramebuffer* target, bool depth) override;
 };
 
 /**
@@ -124,6 +126,8 @@ public:
     void Unbind() override;
 
     void CopyToScreen(int fromX, int fromY, int fromWidth, int fromHeight, int toX, int toY, int toWidth, int toHeight) override;
+
+    void CopyToFramebuffer(CFramebuffer* target, bool depth) override;
 };
 
 } // end of Gfx

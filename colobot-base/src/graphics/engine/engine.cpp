@@ -255,15 +255,16 @@ CEngine::CEngine(CApplication *app, CSystemUtils* systemUtils)
     m_particleDensity = 1.0f;
     m_clippingDistance = 1.0f;
     m_terrainVision = 1000.0f;
-    m_textureMipmapLevel = 1;
-    m_textureAnisotropy = 1;
+    // Defaults for a new profile; anisotropy is clamped to what the GPU supports
+    m_textureMipmapLevel = 8;
+    m_textureAnisotropy = 16;
     m_shadowMapping = true;
     m_offscreenShadowRendering = true;
-    m_offscreenShadowRenderingResolution = 2048;
+    m_offscreenShadowRenderingResolution = 4096;
     m_qualityShadows = true;
     m_terrainShadows = false;
     m_shadowRange = 0.0f;
-    m_multisample = 2;
+    m_multisample = 4;
     m_vsync = -1; // adaptive, falls back to regular vsync (see CApplication::TryToSetVSync)
 
     m_backForce = true;
@@ -289,10 +290,12 @@ CEngine::CEngine(CApplication *app, CSystemUtils* systemUtils)
     m_shadowColor = 0.5f;
 
     m_defaultTexParams.format = TextureFormat::AUTO;
-    m_defaultTexParams.filter = TextureFilter::BILINEAR;
+    m_defaultTexParams.filter = TextureFilter::TRILINEAR;
+    m_defaultTexParams.mipmap = true;
 
     m_terrainTexParams.format = TextureFormat::AUTO;
-    m_terrainTexParams.filter = TextureFilter::BILINEAR;
+    m_terrainTexParams.filter = TextureFilter::TRILINEAR;
+    m_terrainTexParams.mipmap = true;
     m_terrainTexParams.wrap = TextureWrapMode::CLAMP;
 
     // Compute bias matrix for shadow mapping
@@ -468,8 +471,9 @@ void CEngine::ResetAfterVideoConfigChanged()
     // Update the camera projection matrix for new aspect ratio
     ApplyChange();
 
-    // This needs to be recreated on resolution change
+    // These need to be recreated on resolution change
     m_device->DeleteFramebuffer("multisample");
+    m_device->DeleteFramebuffer("scene");
 }
 
 void CEngine::ReloadAllTextures()
@@ -2493,6 +2497,26 @@ int CEngine::GetMultiSample()
     return m_multisample;
 }
 
+void CEngine::SetAmbientOcclusion(bool value)
+{
+    m_ambientOcclusion = value;
+}
+
+bool CEngine::GetAmbientOcclusion()
+{
+    return m_ambientOcclusion;
+}
+
+void CEngine::SetSharpening(bool value)
+{
+    m_sharpening = value;
+}
+
+bool CEngine::GetSharpening()
+{
+    return m_sharpening;
+}
+
 void CEngine::SetTriplanarMode(bool enabled)
 {
     m_triplanarMode = enabled;
@@ -3101,14 +3125,15 @@ void CEngine::Render()
         if (m_drawWorld && m_shadowMapping)
             RenderShadowMap();
 
-        UseMSAA(true);
+        bool postProcess = m_drawWorld && UsePostProcessing();
+        BeginWorldRendering(postProcess);
 
         DrawBackground();                // draws the background
 
         if (m_drawWorld)
             Draw3DScene();
 
-        UseMSAA(false);
+        EndWorldRendering(postProcess);
 
         // marked to capture currently rendered world
         if (m_captureWorld)
@@ -3998,6 +4023,85 @@ void CEngine::UseMSAA(bool enable)
             framebuffer->CopyToScreen(0, 0, width, height, 0, 0, width, height);
         }
     }
+}
+
+bool CEngine::UsePostProcessing()
+{
+    if (!m_ambientOcclusion && !m_sharpening)
+        return false;
+
+    CPostProcessRenderer* renderer = m_device->GetPostProcessRenderer();
+    return renderer != nullptr && renderer->IsAvailable() && GetSceneFramebuffer() != nullptr;
+}
+
+CFramebuffer* CEngine::GetSceneFramebuffer()
+{
+    CFramebuffer* framebuffer = m_device->GetFramebuffer("scene");
+    if (framebuffer != nullptr)
+        return framebuffer;
+
+    CFramebuffer* screen = m_device->GetFramebuffer("default");
+
+    FramebufferParams params;
+    params.width = screen->GetWidth();
+    params.height = screen->GetHeight();
+    params.depth = 24;
+    params.colorAttachment = FramebufferParams::AttachmentType::Texture;
+    params.depthAttachment = FramebufferParams::AttachmentType::Texture;
+
+    framebuffer = m_device->CreateFramebuffer("scene", params);
+
+    if (framebuffer == nullptr)
+    {
+        GetLogger()->Error("Could not create scene framebuffer, disabling post-processing");
+        m_ambientOcclusion = false;
+        m_sharpening = false;
+    }
+
+    return framebuffer;
+}
+
+void CEngine::BeginWorldRendering(bool postProcess)
+{
+    UseMSAA(true);
+
+    // With MSAA the world is drawn into the multisample framebuffer and resolved into the scene one at the end
+    if (!postProcess || (m_multisample > 1 && m_device->GetFramebuffer("multisample") != nullptr))
+        return;
+
+    GetSceneFramebuffer()->Bind();
+
+    m_device->SetDepthTest(true);
+    m_device->SetDepthMask(true);
+    m_device->Clear();
+}
+
+void CEngine::EndWorldRendering(bool postProcess)
+{
+    if (!postProcess)
+    {
+        UseMSAA(false);
+        return;
+    }
+
+    CFramebuffer* scene = GetSceneFramebuffer();
+    CFramebuffer* multisample = m_multisample > 1 ? m_device->GetFramebuffer("multisample") : nullptr;
+
+    if (multisample != nullptr)
+        multisample->CopyToFramebuffer(scene, true);
+
+    scene->Unbind();
+
+    PostProcessParams params;
+    params.colorTexture = scene->GetColorTexture();
+    params.depthTexture = scene->GetDepthTexture();
+    params.size = { scene->GetWidth(), scene->GetHeight() };
+    params.projection = m_matProj;
+    params.ambientOcclusion = m_ambientOcclusion ? 0.8f : 0.0f;
+    params.ambientOcclusionFade = m_deepView[m_rankView] * m_clippingDistance;
+    params.sharpness = m_sharpening ? 0.5f : 0.0f;
+
+    m_device->GetPostProcessRenderer()->Draw(params);
 }
 
 void CEngine::DrawInterface()

@@ -119,6 +119,12 @@ void CScreenSetupGraphics::CreateInterface()
     pos.y -= 0.048f;
     pc = pw->CreateCheck(pos, ddim, -1, EVENT_INTERFACE_PAUSE_BLUR);
     pc->SetState(STATE_SHADOW);
+    pos.y -= 0.048f;
+    pc = pw->CreateCheck(pos, ddim, -1, EVENT_INTERFACE_AMBIENT_OCCLUSION);
+    pc->SetState(STATE_SHADOW);
+    pos.y -= 0.048f;
+    pc = pw->CreateCheck(pos, ddim, -1, EVENT_INTERFACE_SHARPENING);
+    pc->SetState(STATE_SHADOW);
 
     pos.x = ox+sx*8.5f;
     pos.y = 0.65f;
@@ -284,6 +290,16 @@ bool CScreenSetupGraphics::EventProcess(const Event &event)
             UpdateSetupButtons();
             break;
 
+        case EVENT_INTERFACE_AMBIENT_OCCLUSION:
+            m_engine->SetAmbientOcclusion(!m_engine->GetAmbientOcclusion());
+            UpdateSetupButtons();
+            break;
+
+        case EVENT_INTERFACE_SHARPENING:
+            m_engine->SetSharpening(!m_engine->GetSharpening());
+            UpdateSetupButtons();
+            break;
+
         case EVENT_INTERFACE_SHADOW_SPOTS:
             m_engine->SetShadowMapping(false);
             m_engine->SetShadowMappingQuality(false);
@@ -379,6 +395,18 @@ void CScreenSetupGraphics::UpdateSetupButtons()
     if ( pc != nullptr )
     {
         pc->SetState(STATE_CHECK, m_engine->GetPauseBlurEnabled());
+    }
+
+    pc = static_cast<CCheck*>(pw->SearchControl(EVENT_INTERFACE_AMBIENT_OCCLUSION));
+    if ( pc != nullptr )
+    {
+        pc->SetState(STATE_CHECK, m_engine->GetAmbientOcclusion());
+    }
+
+    pc = static_cast<CCheck*>(pw->SearchControl(EVENT_INTERFACE_SHARPENING));
+    if ( pc != nullptr )
+    {
+        pc->SetState(STATE_CHECK, m_engine->GetSharpening());
     }
 
     pc = static_cast<CCheck*>(pw->SearchControl(EVENT_INTERFACE_SHADOW_SPOTS));
@@ -537,20 +565,23 @@ void CScreenSetupGraphics::ChangeSetupQuality(int quality)
 
     if ( quality <  0 ) m_engine->SetMultiSample(1);
     if ( quality == 0 ) m_engine->SetMultiSample(2);
-    if ( quality >  0 ) m_engine->SetMultiSample(4);
+    if ( quality >  0 ) m_engine->SetMultiSample(8);
 
     if ( quality <  0 ) m_engine->SetTextureAnisotropyLevel(1);
     if ( quality == 0 ) m_engine->SetTextureAnisotropyLevel(2);
-    if ( quality >  0 ) m_engine->SetTextureAnisotropyLevel(8);
+    if ( quality >  0 ) m_engine->SetTextureAnisotropyLevel(16);
 
     if ( quality <  0 ) { m_engine->SetTextureFilterMode(Gfx::TextureFilter::BILINEAR); }
     if ( quality == 0 ) { m_engine->SetTextureFilterMode(Gfx::TextureFilter::TRILINEAR); m_engine->SetTextureMipmapLevel(4); m_engine->SetTextureAnisotropyLevel(4); }
-    if ( quality >  0 ) { m_engine->SetTextureFilterMode(Gfx::TextureFilter::TRILINEAR); m_engine->SetTextureMipmapLevel(8); m_engine->SetTextureAnisotropyLevel(8); }
+    if ( quality >  0 ) { m_engine->SetTextureFilterMode(Gfx::TextureFilter::TRILINEAR); m_engine->SetTextureMipmapLevel(8); m_engine->SetTextureAnisotropyLevel(16); }
 
     if ( quality <  0 ) { m_engine->SetShadowMapping(false); m_engine->SetShadowMappingQuality(false); }
     else { m_engine->SetShadowMapping(true); m_engine->SetShadowMappingQuality(true); m_engine->SetShadowMappingOffscreen(true); }
     if ( quality == 0 ) m_engine->SetShadowMappingOffscreenResolution(1024);
-    if ( quality >  0 ) m_engine->SetShadowMappingOffscreenResolution(2048);
+    if ( quality >  0 ) m_engine->SetShadowMappingOffscreenResolution(8192);
+
+    m_engine->SetAmbientOcclusion(quality >= 0);
+    m_engine->SetSharpening(quality >= 0);
 
     // TODO: first execute adapt?
     //m_engine->FirstExecuteAdapt(false);

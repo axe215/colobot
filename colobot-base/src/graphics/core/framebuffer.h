@@ -109,6 +109,9 @@ public:
 
     //! Copies content of color buffer to screen
     virtual void CopyToScreen(int fromX, int fromY, int fromWidth, int fromHeight, int toX, int toY, int toWidth, int toHeight) = 0;
+
+    //! Copies color (and optionally depth) buffer to another framebuffer of the same size, resolving multisampling
+    virtual void CopyToFramebuffer(CFramebuffer* target, bool depth) = 0;
 };
 
 
@@ -161,6 +164,8 @@ public:
 
     //! Copies content of color buffer to screen
     void CopyToScreen(int fromX, int fromY, int fromWidth, int fromHeight, int toX, int toY, int toWidth, int toHeight) override;
+
+    void CopyToFramebuffer(CFramebuffer* target, bool depth) override;
 };
 
 } // end of Gfx

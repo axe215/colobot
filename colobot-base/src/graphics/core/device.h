@@ -49,6 +49,7 @@ class CTerrainRenderer;
 class CShadowRenderer;
 class CObjectRenderer;
 class CParticleRenderer;
+class CPostProcessRenderer;
 
 struct FramebufferParams;
 struct Light;
@@ -320,6 +321,8 @@ public:
     virtual CParticleRenderer* GetParticleRenderer() = 0;
     //! Returns shadow renderer
     virtual CShadowRenderer* GetShadowRenderer() = 0;
+    //! Returns post-processing renderer
+    virtual CPostProcessRenderer* GetPostProcessRenderer() = 0;
 
     //! Creates a texture from image; the image can be safely removed after that
     virtual Texture CreateTexture(CImage *image, const TextureCreateParams &params) = 0;

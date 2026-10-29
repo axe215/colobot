@@ -5,6 +5,8 @@ target_sources(Colobot-Base PRIVATE
     gl33_object_renderer.h
     gl33_particle_renderer.cpp
     gl33_particle_renderer.h
+    gl33_postprocess_renderer.cpp
+    gl33_postprocess_renderer.h
     gl33_terrain_renderer.cpp
     gl33_terrain_renderer.h
     gl33_shadow_renderer.cpp
@@ -25,6 +27,9 @@ if(COLOBOT_DEVELOPMENT_MODE)
         object_vs.glsl
         particle_fs.glsl
         particle_vs.glsl
+        postprocess_fs.glsl
+        postprocess_vs.glsl
+        ambient_occlusion_fs.glsl
         preamble.glsl
         shadow_fs.glsl
         shadow_vs.glsl

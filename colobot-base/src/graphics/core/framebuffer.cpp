@@ -96,4 +96,8 @@ void CDefaultFramebuffer::CopyToScreen(int fromX, int fromY, int fromWidth, int 
 {
 }
 
+void CDefaultFramebuffer::CopyToFramebuffer(CFramebuffer* target, bool depth)
+{
+}
+
 } // end of Gfx

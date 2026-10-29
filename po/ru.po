@@ -2062,6 +2062,9 @@ msgstr "epsitec.com"
 #~ msgid "3D sound\\3D positioning of the sound"
 #~ msgstr "3D-звук\\Стерео звук"
 
+#~ msgid "Ambient occlusion\\Soft shading in corners, gaps and under objects"
+#~ msgstr "Затенение (SSAO)\\Мягкое затенение в углах, щелях и под объектами"
+
 #~ msgid "Build a destroyer"
 #~ msgstr "Построить уничтожитель"
 
@@ -2148,6 +2151,9 @@ msgstr "epsitec.com"
 
 #~ msgid "Robbie\\Your assistant"
 #~ msgstr "Робби\\Ваш помощник"
+
+#~ msgid "Sharpening\\Sharper image of the 3D world"
+#~ msgstr "Резкость\\Более чёткое изображение 3D-мира"
 
 #~ msgid "Sky\\Clouds and nebulae"
 #~ msgstr "Небо\\Облака и туманности"

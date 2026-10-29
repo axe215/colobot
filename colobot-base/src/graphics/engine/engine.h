@@ -61,6 +61,7 @@ namespace Gfx
 constexpr glm::ivec2 REFERENCE_SIZE(800, 600);
 
 class CDevice;
+class CFramebuffer;
 class CUIRenderer;
 class CObjectRenderer;
 class COldModelManager;
@@ -921,6 +922,20 @@ public:
     //@}
 
     //@{
+    //! Management of screen space ambient occlusion (post-processing)
+    // NOTE: This is an user configuration setting
+    void            SetAmbientOcclusion(bool value);
+    bool            GetAmbientOcclusion();
+    //@}
+
+    //@{
+    //! Management of sharpening (post-processing)
+    // NOTE: This is an user configuration setting
+    void            SetSharpening(bool value);
+    bool            GetSharpening();
+    //@}
+
+    //@{
     //! Management the mode of background
     void            SetBackForce(bool present);
     bool            GetBackForce();
@@ -1038,6 +1053,14 @@ protected:
     void        RenderShadowMap();
     //! Enables or disables MSAA
     void        UseMSAA(bool enable);
+    //! Returns true if the 3D world goes through post-processing this frame
+    bool        UsePostProcessing();
+    //! Binds the framebuffer the 3D world is drawn into
+    void        BeginWorldRendering(bool postProcess);
+    //! Resolves the 3D world into the default framebuffer, applying post-processing
+    void        EndWorldRendering(bool postProcess);
+    //! Returns the framebuffer with color and depth textures for post-processing
+    CFramebuffer* GetSceneFramebuffer();
     //! Draws the user interface over the scene
     void        DrawInterface();
 
@@ -1337,6 +1360,10 @@ protected:
     float m_shadowRange;
     //! Number of samples for multisample rendering
     int m_multisample;
+    //! true enables screen space ambient occlusion
+    bool m_ambientOcclusion = true;
+    //! true enables sharpening
+    bool m_sharpening = true;
 
     //! Map of loaded textures (by name)
     std::map<std::filesystem::path, Texture> m_texNameMap;

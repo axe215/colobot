@@ -303,4 +303,42 @@ public:
     virtual void DrawObject(const CVertexBuffer* buffer, bool transparent) = 0;
 };
 
+/**
+ * \struct PostProcessParams
+ * \brief Input and settings of the post-processing pass
+ */
+struct PostProcessParams
+{
+    //! Scene color texture
+    int colorTexture = 0;
+    //! Scene depth texture
+    int depthTexture = 0;
+    //! Size of the scene textures in pixels
+    glm::ivec2 size = { 0, 0 };
+    //! Projection matrix the scene was rendered with
+    glm::mat4 projection = glm::mat4(1.0f);
+    //! Ambient occlusion strength, 0 disables it
+    float ambientOcclusion = 0.0f;
+    //! Distance from the camera at which ambient occlusion fades out
+    float ambientOcclusionFade = 100.0f;
+    //! Sharpening strength, 0 disables it
+    float sharpness = 0.0f;
+};
+
+/**
+ * \class CPostProcessRenderer
+ * \brief Abstract interface for the full screen post-processing pass
+ */
+class CPostProcessRenderer : public CRenderer
+{
+public:
+    virtual ~CPostProcessRenderer() { }
+
+    //! Returns true if the effects can be used (shaders compiled)
+    virtual bool IsAvailable() = 0;
+
+    //! Draws the scene textures into the bound framebuffer with the effects applied
+    virtual void Draw(const PostProcessParams& params) = 0;
+};
+
 } // namespace Gfx

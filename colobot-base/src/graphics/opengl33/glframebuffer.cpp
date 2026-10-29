@@ -294,6 +294,29 @@ void CGLFramebuffer::CopyToScreen(int fromX, int fromY, int fromWidth, int fromH
     glBindFramebuffer(GL_FRAMEBUFFER, m_currentFBO);
 }
 
+void CGLFramebuffer::CopyToFramebuffer(CFramebuffer* target, bool depth)
+{
+    auto glTarget = dynamic_cast<CGLFramebuffer*>(target);
+    if (glTarget == nullptr)
+    {
+        GetLogger()->Error("CopyToFramebuffer: target is not a GL framebuffer");
+        return;
+    }
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, glTarget->m_fbo);
+
+    // Depth can only be copied with nearest filtering, and the sizes match anyway
+    GLbitfield mask = GL_COLOR_BUFFER_BIT;
+    if (depth)
+        mask |= GL_DEPTH_BUFFER_BIT;
+
+    glBlitFramebuffer(0, 0, m_params.width, m_params.height,
+        0, 0, glTarget->m_params.width, glTarget->m_params.height, mask, GL_NEAREST);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_currentFBO);
+}
+
 // CGLFramebufferEXT
 GLuint CGLFramebufferEXT::m_currentFBO = 0;
 
@@ -569,6 +592,11 @@ void CGLFramebufferEXT::CopyToScreen(int fromX, int fromY, int fromWidth, int fr
             toX, toY, toX + toWidth, toY + toHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_currentFBO);
+}
+
+void CGLFramebufferEXT::CopyToFramebuffer(CFramebuffer* target, bool depth)
+{
+    GetLogger()->Error("CopyToFramebuffer is not supported with EXT framebuffers");
 }
 
 } // end of Gfx

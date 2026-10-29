@@ -71,6 +71,7 @@ class CGL33TerrainRenderer;
 class CGL33ObjectRenderer;
 class CGL33ParticleRenderer;
 class CGL33ShadowRenderer;
+class CGL33PostProcessRenderer;
 
 /**
   \class CGL33Device
@@ -106,6 +107,7 @@ public:
     CObjectRenderer* GetObjectRenderer() override;
     CParticleRenderer* GetParticleRenderer() override;
     CShadowRenderer* GetShadowRenderer() override;
+    CPostProcessRenderer* GetPostProcessRenderer() override;
 
     Texture CreateTexture(CImage *image, const TextureCreateParams &params) override;
     Texture CreateTexture(ImageData *data, const TextureCreateParams &params) override;
@@ -178,6 +180,8 @@ private:
     std::unique_ptr<CGL33ParticleRenderer> m_particleRenderer;
     //! Shadow renderer
     std::unique_ptr<CGL33ShadowRenderer> m_shadowRenderer;
+    //! Post-processing renderer
+    std::unique_ptr<CGL33PostProcessRenderer> m_postProcessRenderer;
 
     //! Depth test
     bool m_depthTest = false;
